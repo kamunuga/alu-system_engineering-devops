@@ -21,8 +21,8 @@ frontend maellene-frontend
 
 backend maellene-backend
     balance roundrobin
-    server 6877-web-01 34.203.249.38:80 check
-    server 6877-web-02 3.82.148.239:80 check
+    server 6836-web-01 34.203.249.38:80 check
+    server 6836-web-02 3.82.148.239:80 check
 EOF
 
 # Restart HAProxy service
