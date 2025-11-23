@@ -1,29 +1,54 @@
 #!/usr/bin/env bash
-# Install and configure HAProxy on lb-01 server to load balance between web-01 and web-02
+# Install and configure HAProxy load balancer on Ubuntu
 
-# Update system and install HAProxy
-apt-get -y update
-apt-get -y install haproxy
+set -e
 
-# Enable HAProxy to be started by init script
-sed -i 's/ENABLED=0/ENABLED=1/' /etc/default/haproxy
+# Your real server IPs
+WEB01_IP="34.203.249.38"
+WEB02_IP="3.82.148.239"
 
-# Backup the original haproxy.cfg
-cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.bak
+echo "Updating package list..."
+apt-get update -y
 
-# Configure HAProxy with frontend and backend
-cat >> /etc/haproxy/haproxy.cfg <<EOF
+echo "Installing HAProxy..."
+apt-get install -y haproxy
 
-frontend maellene-frontend
-    bind *:80
-    mode http
-    default_backend maellene-backend
-
-backend maellene-backend
-    balance roundrobin
-    server 6836-web-01 34.203.249.38:80 check
-    server 6836-web-02 3.82.148.239:80 check
+echo "Adding hostnames to /etc/hosts..."
+cat <<EOF >> /etc/hosts
+${WEB01_IP} web-01
+${WEB02_IP} web-02
 EOF
 
-# Restart HAProxy service
+echo "Enabling HAProxy via init script..."
+sed -i 's/ENABLED=0/ENABLED=1/' /etc/default/haproxy
+
+echo "Configuring HAProxy..."
+cat <<EOF > /etc/haproxy/haproxy.cfg
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    daemon
+    user haproxy
+    group haproxy
+
+defaults
+    mode http
+    option httplog
+    timeout connect 5000
+    timeout client 50000
+    timeout server 50000
+
+frontend http_front
+    bind *:80
+    default_backend http_back
+
+backend http_back
+    balance roundrobin
+    server web01 web-01:80 check
+    server web02 web-02:80 check
+EOF
+
+echo "Restarting HAProxy..."
 service haproxy restart
+
+echo "HAProxy setup completed successfully!"
